@@ -85,7 +85,8 @@ int main(int argc, char **argv){
 
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    double offx = (tv.tv_sec%300)/300.0;
+    srand(tv.tv_usec);
+    double offset = rand()%ARRAY_SIZE(codes);
 
     for(i=1;i<argc;i++){
         char *endptr;
@@ -150,7 +151,7 @@ int main(int argc, char **argv){
                         l++;
                         i = 0;
                     }else{
-                        int ncc = offx*ARRAY_SIZE(codes) + (int)((i+=wcwidth(c))*freq_h + l*freq_v);
+                        int ncc = offset + (i+=wcwidth(c))*freq_h + l*freq_v;
                         if(cc != ncc)
                             printf("\033[38;5;%hhum", codes[(cc = ncc) % ARRAY_SIZE(codes)]);
                     }
