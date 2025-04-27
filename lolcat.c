@@ -50,34 +50,7 @@ static char helpstr[] = "\n"
 
 #define ARRAY_SIZE(foo) (sizeof(foo) / sizeof(foo[0]))
 
-// const unsigned char codes[] = {
-//     225,
-//     224,
-//     230,
-//     194,
-//     195,
-//     189,
-// };
-
-// const unsigned char codes[] = {
-//     182,
-//     181,
-//     187,
-//     151,
-//     152,
-//     146,
-// };
-
-// const unsigned char codes[] = {
-//     175,
-//     180,
-//     150,
-//     115,
-//     110,
-//     140,
-// };
-
-const unsigned char codes[] = {
+const unsigned char codes_light[] = {
     218,
     223,
     193,
@@ -85,6 +58,19 @@ const unsigned char codes[] = {
     153,
     183,
 };
+
+const unsigned char codes_dark[] = {
+    125,
+    130,
+    70,
+    35,
+    25,
+    55,
+};
+
+const unsigned char *codes = codes_light;
+
+#define N_CODES 6
 
 
 void find_escape_sequences(int c, int* state)
@@ -122,6 +108,12 @@ wint_t helpstr_hack(FILE * _ignored)
     return WEOF;
 }
 
+char *color_scheme_command =
+"gdbus call --session --timeout=1000 "
+"         --dest=org.freedesktop.portal.Desktop "
+"         --object-path /org/freedesktop/portal/desktop "
+"         --method org.freedesktop.portal.Settings.Read org.freedesktop.appearance color-scheme";
+
 int main(int argc, char** argv)
 {
     char* default_argv[] = { "-" };
@@ -133,7 +125,30 @@ int main(int argc, char** argv)
     struct timeval tv;
     gettimeofday(&tv, NULL);
     srand(tv.tv_usec);
-    double offset = rand() % ARRAY_SIZE(codes);
+    double offset = rand() % N_CODES;
+
+    // Check for light mode / dark mode
+    char color_scheme_query_result[1024];
+    char mode = '0';
+
+    FILE *fp = popen(color_scheme_command, "r");
+    if (fp == NULL) {
+        printf("Failed to run command\n");
+    } else if(fgets(color_scheme_query_result, sizeof(color_scheme_query_result), fp) != NULL) {
+        mode = color_scheme_query_result[10];
+    }
+
+    switch (mode) {
+    case '0':
+        codes = codes_dark;
+        break;
+    case '1':
+        codes = codes_light;
+        break;
+    case '2':
+        codes = codes_dark;
+        break;
+    }
 
     for (i = 1; i < argc; i++) {
         char* endptr;
@@ -207,7 +222,7 @@ int main(int argc, char** argv)
                     } else {
                         int ncc = offset + (i += wcwidth(c)) * freq_h + l * freq_v;
                         if (cc != ncc)
-                            printf("\033[38;5;%hhum", codes[(cc = ncc) % ARRAY_SIZE(codes)]);
+                            printf("\033[38;5;%hhum", codes[(cc = ncc) % N_CODES]);
                     }
                 }
             }
@@ -215,7 +230,7 @@ int main(int argc, char** argv)
             printf("%lc", c);
 
             if (escape_state == 2)
-                printf("\033[38;5;%hhum", codes[cc % ARRAY_SIZE(codes)]);
+                printf("\033[38;5;%hhum", codes[cc % N_CODES]);
         }
         printf("\n\033[0m");
         cc = -1;
